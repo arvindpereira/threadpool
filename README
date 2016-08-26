@@ -1,0 +1,144 @@
+==================
+ThreadPool Library
+==================
+
+Introduction
+------------
+
+This library implements a thread pool based on POSIX threads. The pool
+has a set of p threads available after initialisation and executes any
+given job on the first free thread in the pool. After finishing the
+execution, the now idle thread is again available for other jobs.
+
+The reason for keeping the execution threads active the whole time is
+the time for starting a new thread, which can be rather large compared
+to the time for the simple assignment of a job to a thread. Especially
+for small jobs, the overhead due to thread creation can be visible or
+event dominant.
+
+Installation
+------------
+
+In "config.mk" are compiler definitions for Linux, Solaris, AIX and HP-UX.
+Other systems should also work.
+
+After entering "make" (GNU make !), the library "libthrpool.a" should reside
+in the main directory. 
+
+Unfortunately, no "make install" is provided. To compile your own programs
+you have to pass
+
+  -I<path_to_thrpool>/src -L<path_to_thrpool> -lthrpool
+
+to your compiler.
+
+Usage
+-----
+
+You can either create your own thread pool or use the global thread pool
+of the library. In case of your private pool, you first have to create
+an object of type TThreadPool:
+
+   TThreadPool * pool = new TThreadPool( p )
+
+Here, <p> is the number of threads in the pool. Afterwards you can run
+jobs in the pool with
+
+   pool->run( job1, NULL, false )
+
+where <job1> defines the job object. The second argument to "run" is
+a pointer to optional parameters supplied to the job. Finally, the third
+argument indicates, whether the thread pool shall delete the job object
+after finishing execution. Both, the second and the third argument are
+optional.
+
+To synchronise with the end of job execution, one either uses the per-job
+synchronisation
+
+   pool->sync( job1 )
+
+or the global synchronisation
+
+   pool->sync_all()
+
+which synchronises with the finishing of _all_ jobs in the thread pool.
+
+If you do not want to use a private pool you can access the global thread
+pool by the functions 
+
+   tp_init( p )
+   tp_run( TThreadPool::TJob * job, void * arg, bool del )
+   tp_sync( TThreadPool::TJob * job )
+   tp_sync_all()
+   tp_done()
+
+which implement the same functionality as the above described member functions.
+
+What is still missing are the job objects. For this, you have to derive
+your own class from TThreadPool::TJob, e.g.
+
+   class TMyJob : public TThreadPool::TJob
+   {
+      ...
+   };
+
+The most important function in a job is the "run" function, which holds
+the actual code to execute in the thread pool:
+
+   class TMyJob : public TThreadPool::TJob
+   {
+   public:
+      void run ( void * arg ) 
+      {
+          ...
+      }
+   };
+
+The argument <arg> is used for supplying the optional argument to the "run"
+method of the thread pool.
+
+To identify your current job, one can define a job-id for each job. This
+id is given to the constructor of TThreadPool::TJob, e.g.
+
+   class TMyJob : public TThreadPool::TJob
+   {
+   public:
+       TMyJob ( int id ) 
+           : TThreadPool::TJob( id )
+       {
+           ...
+       }
+
+       ...
+   };   
+
+and can afterwards be accessed by the method "job_no()", e.g. 
+
+   class TMyJob : public TThreadPool::TJob
+   {
+   public:
+      void run ( void * arg ) 
+      {
+          if ( job_no() == 0 )
+          {
+              // do this
+          }
+          else
+          {
+              // do that
+          }
+      }
+   };
+
+By default, the job id has the value "NO_PROC".
+
+In the "test/" sub directory, some examples for the usage of the thread pool
+are given. Furthermore, the documentation which can be found under 
+http://www.hlnum.org/english/projects/tools/threadpool gives a more detailed
+introduction into the topic.
+
+License
+-------
+
+The ThreadPool Library comes under the terms of the GNU LESSER GENERAL PUBLIC
+LICENSE (see included file).
